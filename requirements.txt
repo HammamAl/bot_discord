@@ -1,0 +1,3 @@
+discord.py
+paho-mqtt
+python-dotenv
