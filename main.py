@@ -21,7 +21,7 @@ class AmoniaBot(commands.Bot):
         # Daftar perintah yang tersedia
         self.available_commands = [
             "mode", "manual", "auto", "info", 
-            "relay on", "relay off", "help", "wifi", "all data"
+            "relay_on", "relay_off", "help", "wifi", "all_data"
         ]
 
     async def setup_hook(self):
@@ -48,9 +48,9 @@ class AmoniaBot(commands.Bot):
                 "• !auto - Aktifkan mode otomatis\n"
                 "• !info - Tampilkan data sensor\n"
                 "• !wifi - Menampilkan info sambungan wifi\n"
-                "• !relay on - Nyalakan relay (mode manual)\n"
-                "• !relay off - Matikan relay (mode manual)\n"
-                "• !all data - mengirim semua data pemantauan sistem\n"
+                "• !relay_on - Nyalakan relay (mode manual)\n"
+                "• !relay_off - Matikan relay (mode manual)\n"
+                "• !all_data - mengirim semua data pemantauan sistem\n"
             )
         elif isinstance(error, commands.MissingPermissions):
             await ctx.send("❌ Anda tidak memiliki izin untuk menggunakan perintah ini!")
@@ -106,9 +106,9 @@ class CommandsCog(commands.Cog):
             "• !auto - Aktifkan mode otomatis\n"
             "• !info - Tampilkan data sensor terkini\n"
             "• !wifi - Menampilkan info sambungan wifi\n"
-            "• !relay on - Nyalakan relay (mode manual)\n"
-            "• !relay off - Matikan relay (mode manual)\n"
-            "• !all data - mengirim semua data pemantauan sistem\n\n"
+            "• !relay_on - Nyalakan relay (mode manual)\n"
+            "• !relay_off - Matikan relay (mode manual)\n"
+            "• !all_data - mengirim semua data pemantauan sistem\n\n"
             "*Catatan:*\n"
             "- Perintah relay hanya berfungsi dalam mode manual\n"
             "- Bot akan memberi peringatan otomatis jika level amonia tinggi\n"
@@ -124,7 +124,7 @@ class CommandsCog(commands.Cog):
         except Exception as e:
             await ctx.send(f"❌ Terjadi kesalahan: {str(e)}")
 
-    @commands.command(name="all data")
+    @commands.command(name="all_data")
     async def get_csv(self, ctx):
         try:
             await ctx.send(f"Silahkan klik link berikut: https://storage.cloud.google.com/data-sensor-bucket/data_sensor.csv")
@@ -137,7 +137,7 @@ class CommandsCog(commands.Cog):
         try:
             self.bot.current_mode = "MANUAL"
             self.bot.mqtt_handler.client.publish(MQTT_RELAY_CONTROL_TOPIC, "MANUAL")
-            await ctx.send("✅ Mode relay diubah ke *Manual*.\nGunakan !relay on atau !relay off untuk mengontrol relay.")
+            await ctx.send("✅ Mode relay diubah ke *Manual*.\nGunakan !relay_on atau !relay_off untuk mengontrol relay.")
         except Exception as e:
             await ctx.send(f"❌ Gagal mengubah mode: {str(e)}")
 
@@ -151,7 +151,7 @@ class CommandsCog(commands.Cog):
         except Exception as e:
             await ctx.send(f"❌ Gagal mengubah mode: {str(e)}")
 
-    @commands.command(name="relay on")
+    @commands.command(name="relay_on")
     async def relay_on(self, ctx):
         """Nyalakan relay (mode manual)"""
         try:
@@ -164,7 +164,7 @@ class CommandsCog(commands.Cog):
         except Exception as e:
             await ctx.send(f"❌ Gagal menyalakan relay: {str(e)}")
 
-    @commands.command(name="relay off")
+    @commands.command(name="relay_off")
     async def relay_off(self, ctx):
         """Matikan relay (mode manual)"""
         try:
