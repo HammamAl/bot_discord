@@ -3,6 +3,7 @@ from discord.ext import commands, tasks
 from config import *
 from mqtt_handler import MQTTHandler
 from data import save_to_csv
+from save_data import save_to_gcs
 import logging
 from datetime import datetime
 import shutil
@@ -63,6 +64,7 @@ class AmoniaBot(commands.Bot):
             suhu, kelembapan, amonia = self.mqtt_handler.get_sensor_data()
             if all(x is not None for x in [suhu, kelembapan, amonia]):
                 save_to_csv(suhu, kelembapan, amonia)
+                save_to_gcs(suhu, kelembapan, amonia)
                 print(f"📊 Monitoring: Amonia={amonia}PPM, Suhu={suhu}°C, Kelembapan={kelembapan}%")
                 
                 if amonia > AMONIA_AMBANG_BATAS:
