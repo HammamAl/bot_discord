@@ -8,26 +8,6 @@ from datetime import datetime
 import shutil
 import os
 
-def set_google_application_credentials():
-    # Path ke file JSON kredensial akun layanan
-    credentials_path = "/home/alfarisihammam/bot-discord-446507-82e5fe39653e.json"
-
-    # Pastikan file JSON kredensial ada
-    if not os.path.exists(credentials_path):
-        raise FileNotFoundError(f"File kredensial tidak ditemukan: {credentials_path}")
-
-    # Tetapkan variabel lingkungan GOOGLE_APPLICATION_CREDENTIALS
-    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
-    print(f"✅ Variabel GOOGLE_APPLICATION_CREDENTIALS telah diset ke: {credentials_path}")
-
-# Jalankan fungsi untuk menetapkan variabel lingkungan
-if __name__ == "__main__":
-    try:
-        set_google_application_credentials()
-        print("🎉 Berhasil mengatur variabel lingkungan! Anda siap menggunakan Google Cloud SDK.")
-    except Exception as e:
-        print(f"❌ Terjadi kesalahan: {e}")
-
 class AmoniaBot(commands.Bot):
     def __init__(self):
         intents = discord.Intents.default()
@@ -41,13 +21,19 @@ class AmoniaBot(commands.Bot):
         # Daftar perintah yang tersedia
         self.available_commands = [
             "mode", "manual", "auto", "info", 
-            "relay_on", "relay_off", "help", "wifi"
+            "relay on", "relay off", "help", "wifi", "all data"
         ]
 
     async def setup_hook(self):
         self.mqtt_handler = MQTTHandler(self)
         self.mqtt_handler.client.loop_start()
         self.monitor_system_task.start()
+        self.mqtt_handler.client.on_disconnect = self.on_mqtt_disconnect
+
+    # MQTT Handler
+    async def on_mqtt_disconnect(self, client, userdata, rc):
+        logging.warning("MQTT Disconnected. Mencoba reconnect...")
+        await self.mqtt_handler.connect()
 
     # Menangani pesan yang tidak valid
     async def on_command_error(self, ctx, error):
@@ -62,8 +48,9 @@ class AmoniaBot(commands.Bot):
                 "• !auto - Aktifkan mode otomatis\n"
                 "• !info - Tampilkan data sensor\n"
                 "• !wifi - Menampilkan info sambungan wifi\n"
-                "• !relay_on - Nyalakan relay (mode manual)\n"
-                "• !relay_off - Matikan relay (mode manual)"
+                "• !relay on - Nyalakan relay (mode manual)\n"
+                "• !relay off - Matikan relay (mode manual)\n"
+                "• !all data - mengirim semua data pemantauan sistem\n"
             )
         elif isinstance(error, commands.MissingPermissions):
             await ctx.send("❌ Anda tidak memiliki izin untuk menggunakan perintah ini!")
@@ -119,11 +106,13 @@ class CommandsCog(commands.Cog):
             "• !auto - Aktifkan mode otomatis\n"
             "• !info - Tampilkan data sensor terkini\n"
             "• !wifi - Menampilkan info sambungan wifi\n"
-            "• !relay_on - Nyalakan relay (mode manual)\n"
-            "• !relay_off - Matikan relay (mode manual)\n\n"
+            "• !relay on - Nyalakan relay (mode manual)\n"
+            "• !relay off - Matikan relay (mode manual)\n"
+            "• !all data - mengirim semua data pemantauan sistem\n\n"
             "*Catatan:*\n"
             "- Perintah relay hanya berfungsi dalam mode manual\n"
-            "- Bot akan memberi peringatan otomatis jika level amonia tinggi"
+            "- Bot akan memberi peringatan otomatis jika level amonia tinggi\n"
+            "- Dashboard pemantauan sistem : http://pengendaliamonia.hammamalfarisy.com"
         )
         await ctx.send(help_text)
 
@@ -135,13 +124,20 @@ class CommandsCog(commands.Cog):
         except Exception as e:
             await ctx.send(f"❌ Terjadi kesalahan: {str(e)}")
 
+    @commands.command(name="all data")
+    async def get_csv(self, ctx):
+        try:
+            await ctx.send(f"Silahkan klik link berikut: https://storage.cloud.google.com/data-sensor-bucket/data_sensor.csv")
+        except Exception as e:
+            await ctx.send(f"❌ Terjadi kesalahan: {str(e)}")
+
     @commands.command(name="manual")
     async def mode_manual(self, ctx):
         """Aktifkan mode manual"""
         try:
             self.bot.current_mode = "MANUAL"
             self.bot.mqtt_handler.client.publish(MQTT_RELAY_CONTROL_TOPIC, "MANUAL")
-            await ctx.send("✅ Mode relay diubah ke *Manual*.\nGunakan !relay_on atau !relay_off untuk mengontrol relay.")
+            await ctx.send("✅ Mode relay diubah ke *Manual*.\nGunakan !relay on atau !relay off untuk mengontrol relay.")
         except Exception as e:
             await ctx.send(f"❌ Gagal mengubah mode: {str(e)}")
 
@@ -155,7 +151,7 @@ class CommandsCog(commands.Cog):
         except Exception as e:
             await ctx.send(f"❌ Gagal mengubah mode: {str(e)}")
 
-    @commands.command(name="relay_on")
+    @commands.command(name="relay on")
     async def relay_on(self, ctx):
         """Nyalakan relay (mode manual)"""
         try:
@@ -168,7 +164,7 @@ class CommandsCog(commands.Cog):
         except Exception as e:
             await ctx.send(f"❌ Gagal menyalakan relay: {str(e)}")
 
-    @commands.command(name="relay_off")
+    @commands.command(name="relay off")
     async def relay_off(self, ctx):
         """Matikan relay (mode manual)"""
         try:
@@ -213,6 +209,7 @@ class CommandsCog(commands.Cog):
                 await ctx.send("⚠ Gagal mendapatkan data wifi! Periksa koneksi.")
         except Exception as e:
             await ctx.send(f"❌ Gagal mengambil data: {str(e)}")
+
 def main():
     bot = AmoniaBot()
 
@@ -236,6 +233,26 @@ def backup_csv():
         f'backup/data_{timestamp}.csv'
     )
 
+def set_google_application_credentials():
+    # Path ke file JSON kredensial akun layanan
+    credentials_path = "/home/alfarisihammam/bot-discord-446507-82e5fe39653e.json"
+
+    # Pastikan file JSON kredensial ada
+    if not os.path.exists(credentials_path):
+        raise FileNotFoundError(f"File kredensial tidak ditemukan: {credentials_path}")
+
+    if not os.access(credentials_path, os.R_OK):
+        raise PermissionError("Tidak bisa membaca credentials")
+
+    # Tetapkan variabel lingkungan GOOGLE_APPLICATION_CREDENTIALS
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
+    print(f"✅ Variabel GOOGLE_APPLICATION_CREDENTIALS telah diset ke: {credentials_path}")
+
 
 if __name__ == "__main__":
+    try:
+        set_google_application_credentials()
+        print("🎉 Berhasil mengatur variabel lingkungan! Anda siap menggunakan Google Cloud Storage.")
+    except Exception as e:
+        print(f"❌ Terjadi kesalahan: {e}")
     main()
