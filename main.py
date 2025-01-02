@@ -3,6 +3,30 @@ from discord.ext import commands, tasks
 from config import *
 from mqtt_handler import MQTTHandler
 from data import save_to_csv
+import logging
+from datetime import datetime
+import shutil
+import os
+
+def set_google_application_credentials():
+    # Path ke file JSON kredensial akun layanan
+    credentials_path = "/home/alfarisihammam/bot-discord-446507-82e5fe39653e.json"
+
+    # Pastikan file JSON kredensial ada
+    if not os.path.exists(credentials_path):
+        raise FileNotFoundError(f"File kredensial tidak ditemukan: {credentials_path}")
+
+    # Tetapkan variabel lingkungan GOOGLE_APPLICATION_CREDENTIALS
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = credentials_path
+    print(f"✅ Variabel GOOGLE_APPLICATION_CREDENTIALS telah diset ke: {credentials_path}")
+
+# Jalankan fungsi untuk menetapkan variabel lingkungan
+if __name__ == "__main__":
+    try:
+        set_google_application_credentials()
+        print("🎉 Berhasil mengatur variabel lingkungan! Anda siap menggunakan Google Cloud SDK.")
+    except Exception as e:
+        print(f"❌ Terjadi kesalahan: {e}")
 
 class AmoniaBot(commands.Bot):
     def __init__(self):
@@ -198,6 +222,20 @@ def main():
         await bot.setup()
 
     bot.run(DISCORD_TOKEN)
+
+logging.basicConfig(
+    filename='bot.log',
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+
+def backup_csv():
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    shutil.copy2(
+        'data.csv',
+        f'backup/data_{timestamp}.csv'
+    )
+
 
 if __name__ == "__main__":
     main()

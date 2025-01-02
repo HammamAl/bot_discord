@@ -21,3 +21,7 @@ MQTT_RELAY_CONTROL_TOPIC = "esp32/relay"  # Topik kontrol relay
 MQTT_SENSOR_DATA_TOPIC =  "sensor/data" # Topik data sensor
 MQTT_WIFI_TOPIC = "sensor/wifi"; # Topik wifi
 
+
+
+
+

@@ -1,0 +1,8 @@
+# Ignore Python cache files and directories
+__pycache__/
+*.pyc
+*.pyo
+
+# Ignore environment file
+.env
+data_sensor.csv
