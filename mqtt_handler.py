@@ -71,7 +71,7 @@ class MQTTHandler:
             if self.relay_status == "Relay ON" and  self.relay_mode == "AUTO":
                 asyncio.run_coroutine_threadsafe(
                     channel.send(f"-----------------------------\n"
-                                f"🔔 Peringatan! Amonia Lebih Dari {AMONIA_AMBANG_BATAS} PPM\n"
+                                f"🔔 Peringatan! Amonia Lebih Dari {self.ammonia_threshold} PPM\n"
                                 f"• Status { self.relay_status}\n"
                                 f"• Relay menyala {self.relay_on_duration} detik"),
                     self.bot.loop)
