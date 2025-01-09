@@ -21,7 +21,8 @@ MQTT_RELAY_CONTROL_TOPIC = "esp32/relay"  # Topik kontrol relay
 MQTT_SENSOR_DATA_TOPIC =  "sensor/data" # Topik data sensor
 MQTT_RELAY_SETTING_TOPIC = "relay/setting"; # Topik wifi
 MQTT_AMMONIA_THRESHOLD_TOPIC = "relay/ammonia"; # Topik ambang batas amonia
-
+MQTT_HEARTBEAT_TOPIC = "esp32/heartbeat"; # Topik heartbeat 
+MQTT_RESTART_TOPIC = "esp32/restart"; # Topik restart
 
 
 
