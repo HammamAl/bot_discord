@@ -108,11 +108,12 @@ class AmoniaBot(commands.Bot):
             is_esp_online = self.mqtt_handler.get_is_esp_online()
             relay_status, relay_mode = self.mqtt_handler.get_relay_status_data()
             suhu, kelembapan, amonia = self.mqtt_handler.get_sensor_data()
+            ratio = self.mqtt_handler.get_ratio()
             if all(x is not None for x in [suhu, kelembapan, amonia]):
                 if is_esp_online:
                     save_to_csv(suhu, kelembapan, amonia)
-                    save_to_gcs(suhu, kelembapan, amonia, relay_status, relay_mode)
-                    print(f"📊 Monitoring: Amonia={amonia}PPM, Suhu={suhu}°C, Kelembapan={kelembapan}%")
+                    save_to_gcs(suhu, kelembapan, amonia, ratio, relay_status, relay_mode)
+                    print(f"📊 Monitoring: Amonia={amonia}PPM, Suhu={suhu}°C, Kelembapan={kelembapan}%, Rasio={ratio}")
                 
                 if amonia > AMONIA_AMBANG_BATAS:
                     await self.send_notification(amonia, suhu, kelembapan)
@@ -219,6 +220,7 @@ class CommandsCog(commands.Cog):
             if not is_esp_online:
                 await ctx.send("❌ ESP32 Offline, data sensor tidak dapat diproses")
                 return
+
             suhu, kelembapan, amonia = self.bot.mqtt_handler.get_sensor_data()
             if all(x is not None for x in [suhu, kelembapan, amonia]):
                 await ctx.send(
@@ -232,6 +234,7 @@ class CommandsCog(commands.Cog):
                 await ctx.send("⚠ Gagal mendapatkan data sensor! Periksa koneksi.")
         except Exception as e:
             await ctx.send(f"❌ Gagal mengambil data: {str(e)}")
+
     
     @commands.command(name="set_relay_on")
     async def set_relay_on(self, ctx, duration: int):
@@ -335,8 +338,12 @@ class CommandsCog(commands.Cog):
     
     @commands.command(name="reboot")
     async def esp_restart(self, ctx):
-        """Restart ESP32 dan disconnect wifi"""
+        """Restart ESP32"""
         try:
+            is_esp_online = self.bot.mqtt_handler.get_is_esp_online()
+            if not is_esp_online:
+                await ctx.send("❌ ESP32 Offline, data sensor tidak dapat diproses")
+                return
             self.bot.mqtt_handler.client.publish(MQTT_RESTART_TOPIC, "restart")
             await ctx.send(f"✅ ESP32 akan direstart dalam **5** detik")
         except Exception as e:

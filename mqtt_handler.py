@@ -10,6 +10,7 @@ class MQTTHandler:
         self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         self.sensor_data = {}
         self.wifi_data = {}
+        self.ratio = None
         self.relay_on_duration = None
         self.relay_off_duration = None
         self.relay_status = None
@@ -38,6 +39,8 @@ class MQTTHandler:
             client.subscribe(MQTT_RELAY_SETTING_TOPIC)
             client.subscribe(MQTT_AMMONIA_THRESHOLD_TOPIC)
             client.subscribe(MQTT_HEARTBEAT_TOPIC)
+            client.subscribe(MQTT_WIFI_TOPIC)
+            client.subscribe(MQTT_RATIO_TOPIC)
         else:
             print(f"❌ MQTT: Gagal terhubung ke broker dengan kode {reason_code}")
     
@@ -106,6 +109,10 @@ class MQTTHandler:
                     self.relay_alert(channel, message)
                 else:
                     print(f"❌ channel tidak ditemukan")
+            elif msg.topic == MQTT_WIFI_TOPIC:
+                self.wifi_data = json.loads(message)
+            elif msg.topic == MQTT_RATIO_TOPIC:
+                self.ratio = float(message)
             elif msg.topic == MQTT_AMMONIA_THRESHOLD_TOPIC:
                 self.ammonia_threshold = float(message)
             elif msg.topic == MQTT_RELAY_SETTING_TOPIC:
@@ -157,14 +164,14 @@ class MQTTHandler:
         return (
             self.sensor_data.get("suhu"),
             self.sensor_data.get("kelembapan"),
-            self.sensor_data.get("amonia")
+            self.sensor_data.get("amonia"),
         )
     
     def get_wifi_data(self):
         return (
-            self.sensor_data.get("ssid"),
-            self.sensor_data.get("ipaddress"),
-            self.sensor_data.get("wifi_status")
+            self.wifi_data.get("ssid"),
+            self.wifi_data.get("ipaddress"),
+            self.wifi_data.get("wifi_status")
         )
 
     def get_relay_setting_data(self):
@@ -185,4 +192,5 @@ class MQTTHandler:
     def get_is_esp_online(self):
         return self.is_esp_online
         
-    
+    def get_ratio(self):
+        return self.ratio

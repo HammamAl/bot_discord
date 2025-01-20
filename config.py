@@ -23,7 +23,8 @@ MQTT_RELAY_SETTING_TOPIC = "relay/setting"; # Topik wifi
 MQTT_AMMONIA_THRESHOLD_TOPIC = "relay/ammonia"; # Topik ambang batas amonia
 MQTT_HEARTBEAT_TOPIC = "esp32/heartbeat"; # Topik heartbeat 
 MQTT_RESTART_TOPIC = "esp32/restart"; # Topik restart
-
+MQTT_WIFI_TOPIC = "sensor/wifi" # Topik Wifi
+MQTT_RATIO_TOPIC = "sensor/ratio" # Topik Rs/Ro
 
 
 
