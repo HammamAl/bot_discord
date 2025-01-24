@@ -115,7 +115,7 @@ class AmoniaBot(commands.Bot):
                     save_to_gcs(suhu, kelembapan, amonia, ratio, relay_status, relay_mode)
                     print(f"📊 Monitoring: Amonia={amonia}PPM, Suhu={suhu}°C, Kelembapan={kelembapan}%, Rasio={ratio}")
                 
-                if amonia > AMONIA_AMBANG_BATAS:
+                if amonia > self.ammonia_threshold:
                     await self.send_notification(amonia, suhu, kelembapan)
             else:
                 print("⚠ Tidak Dapat Membaca Data Sensor.")
@@ -331,6 +331,7 @@ class CommandsCog(commands.Cog):
         """Cek apakah ESP32 online"""
         try:
             is_esp_online = self.bot.mqtt_handler.get_is_esp_online()
+            self.bot.mqtt_handler.client.publish(MQTT_ISONLINE_TOPIC, "online")
             send_to_channel = "✅ Online" if is_esp_online else "❌ Offline"
             await ctx.send(f"Status ESP32 : **{send_to_channel}**,")
         except Exception as e:

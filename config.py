@@ -8,8 +8,6 @@ DISCORD_TOKEN: Final[str] = os.getenv("DISCORD_TOKEN") # Discord Token
 CHANNEL_ID: Final[int] = int(os.getenv("CHANNEL_ID"))  # ID saluran Discord tempat bot mengirim notifikasi
 CHANNEL_NAME: Final[str] = os.getenv("CHANNEL_NAME")  # Nama saluran Discord (opsional, untuk validasi)
 
-# ESP32 Config
-AMONIA_AMBANG_BATAS = 30  # Ambang batas Amonia untuk memicu notifikasi otomatis
 
 # MQTT Config
 MQTT_BROKER: Final[str] = os.getenv("MQTT_BROKER") # MQTT Broker link
@@ -25,6 +23,7 @@ MQTT_HEARTBEAT_TOPIC = "esp32/heartbeat"; # Topik heartbeat
 MQTT_RESTART_TOPIC = "esp32/restart"; # Topik restart
 MQTT_WIFI_TOPIC = "sensor/wifi" # Topik Wifi
 MQTT_RATIO_TOPIC = "sensor/ratio" # Topik Rs/Ro
+MQTT_ISONLINE_TOPIC = "esp32/isonline" # Topik Rs/Ro
 
 
 
