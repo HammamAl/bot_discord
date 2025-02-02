@@ -21,13 +21,14 @@ class AmoniaBot(commands.Bot):
         self.current_mode = None
         self.relay_on_duration = None
         self.relay_off_duration = None
+        self.relay_on_manual_duration = None
         self.mqtt_handler = None
         self.ammonia_threshold = None
 
         # Daftar perintah yang tersedia
         self.available_commands = [
-            "mode", "manual", "auto", "info", 
-            "relay_on", "relay_off", "help", "wifi", "all_data"
+            "ping", "manual", "auto", "info", "reboot", "guide", "set_relay_on", "set_relay_off",
+            "relay_on", "relay_off", "help", "config", "set_timer", "set_ammonia"
         ]
 
     async def setup_hook(self):
@@ -48,8 +49,9 @@ class AmoniaBot(commands.Bot):
                 # Atur nilai default di dalam bot
                 self.current_mode = "AUTO"
                 self.relay_on_duration = 30
-                self.relay_off_duration = 30
-                self.ammonia_threshold = 30
+                self.relay_off_duration = 10
+                self.manual_relay_on_duration = 0
+                self.ammonia_threshold = 25
 
                 # Kirim pesan MQTT untuk mengatur mode auto ke ESP32
                 self.mqtt_handler.client.publish(MQTT_RELAY_CONTROL_TOPIC,  self.current_mode)
@@ -77,7 +79,15 @@ class AmoniaBot(commands.Bot):
                     "key" : "begin"
                 })
                 self.mqtt_handler.client.publish(MQTT_RELAY_SETTING_TOPIC, data_off)
-                print("✅ Sistem berhasil diatur ke mode default: AUTO dengan durasi ON=30s, OFF=30s")
+
+                # Kirim durasi relay OFF ke ESP32
+                data_manual_on = json.dumps({
+                    "command": "relay_on_manual",
+                    "duration": self.manual_relay_on_duration,
+                    "key" : "begin"
+                })
+                self.mqtt_handler.client.publish(MQTT_RELAY_SETTING_TOPIC, data_manual_on)
+                print("✅ Sistem berhasil diatur ke mode default: AUTO dengan durasi auto : ON=30s, OFF=30s dan manual : ON=0")
 
             except Exception as e:
                 print(f"❌ Gagal mengatur sistem ke mode default: {e}")
@@ -149,7 +159,6 @@ class CommandsCog(commands.Cog):
         """Menampilkan bantuan penggunaan bot"""
         help_text = "🤖 *Panduan Penggunaan Bot Pengendali Amonia*\n\n"
         help_text += "*Perintah Tersedia:*\n"
-        help_text += "• !guide  -  Menampilkan bantuan penggunaan bot\n"
         for command in self.bot.commands:
             if command.name != "!help" and command.help != "Shows this message":
                 help_text += f"• !{command.name}  -  {command.help}\n"
@@ -171,7 +180,8 @@ class CommandsCog(commands.Cog):
             self.bot.mqtt_handler.client.publish(MQTT_RELAY_CONTROL_TOPIC, self.bot.current_mode )
             await ctx.send("✅ Mode relay diubah ke **Manual**.\n"
                            "• Setting untuk mode **Otomatis** diperbolehkan.\n"
-                           "• Gunakan **!relay_on** atau **!relay_off** untuk mengontrol relay."
+                           "• Gunakan **!relay_on** atau **!relay_off** untuk mengontrol relay.\n"
+                           "• Gunakan **!set_timer** untuk kontrol relay dengan timer."
                            )
         except Exception as e:
             await ctx.send(f"❌ Gagal mengubah mode: {str(e)}")
@@ -211,6 +221,19 @@ class CommandsCog(commands.Cog):
             await ctx.send("✅ Relay berhasil dimatikan (**OFF**) melalui perintah manual.")
         except Exception as e:
             await ctx.send(f"❌ Gagal mematikan relay: {str(e)}")
+
+    @commands.command(name="timer_on")
+    async def timer_on(self, ctx):
+        """Menyalakan relay dalam mode timer"""
+        try:
+            if self.bot.current_mode != "MANUAL":
+                await ctx.send("⚠ Relay hanya dapat dihidupkan dalam **Mode Manual**.\nUbah mode dengan perintah !manual.")
+                return
+            
+            self.bot.mqtt_handler.client.publish(MQTT_RELAY_CONTROL_TOPIC, "TIMER")
+            await ctx.send("✅ Timer berhasil aktif lewat perintah manual.")
+        except Exception as e:
+            await ctx.send(f"❌ Gagal menyalakan relay: {str(e)}")
 
     @commands.command(name="info")
     async def info(self, ctx):
@@ -282,6 +305,34 @@ class CommandsCog(commands.Cog):
         except Exception as e:
             await ctx.send(f"❌ Gagal setting relay: {str(e)}")
 
+    @commands.command(name="set_timer")
+    async def set_timer(self, ctx, duration: int):
+        """contoh : !set_timer <detik>"""
+        try:
+            if self.bot.current_mode != "MANUAL":
+                await ctx.send("⚠ set_timer hanya dapat digunakan dalam **Mode Manual**.")
+                return
+
+            # Update nilai timer di bot
+            self.bot.manual_relay_on_duration = duration * 1000  # Simpan dalam milidetik
+
+            # Kirim setting timer ke ESP32
+            data_json = json.dumps({
+                "command": "relay_on_manual",
+                "duration": duration * 1000,  # Konversi ke milidetik
+                "key": "running"
+            })
+
+            # Publish ke MQTT
+            self.bot.mqtt_handler.client.publish(MQTT_RELAY_SETTING_TOPIC, data_json)
+
+            await ctx.send(f"✅ Timer diatur: relay akan ON selama **{duration}** detik.\n"
+                        f"• Gunakan !timer_on untuk mengaktifkan relay dengan timer.")
+
+        except Exception as e:
+            print(f"Error dalam set_timer: {e}")  # Debug print
+            await ctx.send(f"❌ Gagal setting timer: {str(e)}")
+
     @commands.command(name="set_ammonia")
     async def set_ammonia(self, ctx, value: float):
         """contoh : !set_ammonia  <PPM>"""
@@ -311,7 +362,7 @@ class CommandsCog(commands.Cog):
             is_esp_online = self.bot.mqtt_handler.get_is_esp_online()
             ammonia_threshold = self.bot.mqtt_handler.get_ammonia_threshold()
             relay_status, relay_mode = self.bot.mqtt_handler.get_relay_status_data()
-            relay_on_duration, relay_off_duration = self.bot.mqtt_handler.get_relay_setting_data()
+            relay_on_duration, relay_off_duration, manual_relay_duration = self.bot.mqtt_handler.get_relay_setting_data()
             ssid, ipaddress, wifi_status = self.bot.mqtt_handler.get_wifi_data()
             wifi_connection_status = "**Connected**" if is_esp_online else "Not Connected"
             await ctx.send(f"🛠️ *Informasi Sistem Pengendali Amonia* 🛠️\n"
@@ -320,9 +371,10 @@ class CommandsCog(commands.Cog):
                            f"• Status Wifi: **{wifi_connection_status}**\n"
                            f"• Status relay saat ini: **{relay_status}**\n"
                            f"• Mode relay saat ini: **{relay_mode}**\n"
-                           f"• Ambang batas amonia (auto): **{ammonia_threshold}** PPM\n"
+                           f"• Ambang batas amonia (otomatis): **{ammonia_threshold}** PPM\n"
                            f"• Relay ON (otomatis): **{relay_on_duration}** detik\n"
-                           f"• Relay OFF (otomatis): **{relay_off_duration}** detik\n")
+                           f"• Relay OFF (otomatis): **{relay_off_duration}** detik\n"
+                           f"• Relay ON (manual): **{manual_relay_duration}** detik\n")
         except Exception as e:
             await ctx.send(f"❌ Terjadi kesalahan: {str(e)}")
 

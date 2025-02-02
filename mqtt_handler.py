@@ -13,6 +13,7 @@ class MQTTHandler:
         self.ratio = None
         self.relay_on_duration = None
         self.relay_off_duration = None
+        self.manual_relay_on_duration = None
         self.relay_status = None
         self.relay_mode = None
         self.ammonia_threshold = None
@@ -120,7 +121,9 @@ class MQTTHandler:
                 if relay_setting["command"] == "relay_on":
                     self.relay_on_duration = int(relay_setting["duration"]/1000)
                 if relay_setting["command"] == "relay_off":
-                    self.relay_off_duration = int(relay_setting["duration"]/1000)  
+                    self.relay_off_duration = int(relay_setting["duration"]/1000)
+                if relay_setting["command"] == "relay_on_manual":
+                    self.manual_relay_on_duration = int(relay_setting["duration"]/1000)
             elif msg.topic == MQTT_RELAY_STATUS_TOPIC:
                 relay_data = json.loads(message)
                 self.relay_status = relay_data["status"]
@@ -148,6 +151,16 @@ class MQTTHandler:
                 asyncio.run_coroutine_threadsafe(
                     channel.send(f"-----------------------------\n"
                                 f"🔔 { self.relay_status}, Pendinginan {self.relay_off_duration} detik"),
+                    self.bot.loop)
+            if self.relay_status == "Relay ON" and  self.relay_mode == "MANUAL" and affirmation == "timer":
+                asyncio.run_coroutine_threadsafe(
+                    channel.send(f"-----------------------------\n"
+                                f"🔔 { self.relay_status}, relay aktif {self.manual_relay_on_duration} detik"),
+                    self.bot.loop)
+            if self.relay_status == "Relay OFF" and  self.relay_mode == "MANUAL" and affirmation == "timer":
+                asyncio.run_coroutine_threadsafe(
+                    channel.send(f"-----------------------------\n"
+                                f"🔔 { self.relay_status}, relay telah aktif selama {self.manual_relay_on_duration} detik"),
                     self.bot.loop)
             if affirmation == "alive":
                 asyncio.run_coroutine_threadsafe(
@@ -177,7 +190,8 @@ class MQTTHandler:
     def get_relay_setting_data(self):
         return (
             self.relay_on_duration,
-            self.relay_off_duration
+            self.relay_off_duration,
+            self.manual_relay_on_duration
         )
 
     def get_relay_status_data(self):
