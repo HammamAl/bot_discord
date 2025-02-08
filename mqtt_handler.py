@@ -10,10 +10,10 @@ class MQTTHandler:
         self.client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
         self.sensor_data = {}
         self.wifi_data = {}
-        self.ratio = None
+        self.voltage_mems = None
         self.relay_on_duration = None
         self.relay_off_duration = None
-        self.manual_relay_on_duration = None
+        self.timer_on_duration = None
         self.relay_status = None
         self.relay_mode = None
         self.ammonia_threshold = None
@@ -41,7 +41,7 @@ class MQTTHandler:
             client.subscribe(MQTT_AMMONIA_THRESHOLD_TOPIC)
             client.subscribe(MQTT_HEARTBEAT_TOPIC)
             client.subscribe(MQTT_WIFI_TOPIC)
-            client.subscribe(MQTT_RATIO_TOPIC)
+            client.subscribe(MQTT_VOLTAGE_MEMS_TOPIC)
         else:
             print(f"❌ MQTT: Gagal terhubung ke broker dengan kode {reason_code}")
     
@@ -112,8 +112,8 @@ class MQTTHandler:
                     print(f"❌ channel tidak ditemukan")
             elif msg.topic == MQTT_WIFI_TOPIC:
                 self.wifi_data = json.loads(message)
-            elif msg.topic == MQTT_RATIO_TOPIC:
-                self.ratio = float(message)
+            elif msg.topic == MQTT_VOLTAGE_MEMS_TOPIC:
+                self.voltage_mems = float(message)
             elif msg.topic == MQTT_AMMONIA_THRESHOLD_TOPIC:
                 self.ammonia_threshold = float(message)
             elif msg.topic == MQTT_RELAY_SETTING_TOPIC:
@@ -122,8 +122,8 @@ class MQTTHandler:
                     self.relay_on_duration = int(relay_setting["duration"]/1000)
                 if relay_setting["command"] == "relay_off":
                     self.relay_off_duration = int(relay_setting["duration"]/1000)
-                if relay_setting["command"] == "relay_on_manual":
-                    self.manual_relay_on_duration = int(relay_setting["duration"]/1000)
+                if relay_setting["command"] == "timer_on":
+                    self.timer_on_duration = int(relay_setting["duration"]/1000)
             elif msg.topic == MQTT_RELAY_STATUS_TOPIC:
                 relay_data = json.loads(message)
                 self.relay_status = relay_data["status"]
@@ -155,12 +155,12 @@ class MQTTHandler:
             if self.relay_status == "Relay ON" and  self.relay_mode == "MANUAL" and affirmation == "timer":
                 asyncio.run_coroutine_threadsafe(
                     channel.send(f"-----------------------------\n"
-                                f"🔔 { self.relay_status}, relay aktif {self.manual_relay_on_duration} detik"),
+                                f"🔔 { self.relay_status}, relay aktif {self.timer_on_duration} detik"),
                     self.bot.loop)
             if self.relay_status == "Relay OFF" and  self.relay_mode == "MANUAL" and affirmation == "timer":
                 asyncio.run_coroutine_threadsafe(
                     channel.send(f"-----------------------------\n"
-                                f"🔔 { self.relay_status}, relay telah aktif selama {self.manual_relay_on_duration} detik"),
+                                f"🔔 { self.relay_status}, relay telah aktif selama {self.timer_on_duration} detik"),
                     self.bot.loop)
             if affirmation == "alive":
                 asyncio.run_coroutine_threadsafe(
@@ -191,7 +191,7 @@ class MQTTHandler:
         return (
             self.relay_on_duration,
             self.relay_off_duration,
-            self.manual_relay_on_duration
+            self.timer_on_duration
         )
 
     def get_relay_status_data(self):
@@ -206,5 +206,5 @@ class MQTTHandler:
     def get_is_esp_online(self):
         return self.is_esp_online
         
-    def get_ratio(self):
-        return self.ratio
+    def get_voltage_mems(self):
+        return self.voltage_mems

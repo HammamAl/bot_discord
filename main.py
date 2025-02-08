@@ -49,8 +49,8 @@ class AmoniaBot(commands.Bot):
                 # Atur nilai default di dalam bot
                 self.current_mode = "AUTO"
                 self.relay_on_duration = 30
-                self.relay_off_duration = 10
-                self.manual_relay_on_duration = 0
+                self.relay_off_duration = 15
+                self.timer_on_duration = 0
                 self.ammonia_threshold = 25
 
                 # Kirim pesan MQTT untuk mengatur mode auto ke ESP32
@@ -81,12 +81,12 @@ class AmoniaBot(commands.Bot):
                 self.mqtt_handler.client.publish(MQTT_RELAY_SETTING_TOPIC, data_off)
 
                 # Kirim durasi relay OFF ke ESP32
-                data_manual_on = json.dumps({
-                    "command": "relay_on_manual",
-                    "duration": self.manual_relay_on_duration,
+                data_timer_on = json.dumps({
+                    "command": "timer_on",
+                    "duration": self.timer_on_duration,
                     "key" : "begin"
                 })
-                self.mqtt_handler.client.publish(MQTT_RELAY_SETTING_TOPIC, data_manual_on)
+                self.mqtt_handler.client.publish(MQTT_RELAY_SETTING_TOPIC, data_timer_on)
                 print("✅ Sistem berhasil diatur ke mode default: AUTO dengan durasi auto : ON=30s, OFF=30s dan manual : ON=0")
 
             except Exception as e:
@@ -118,11 +118,11 @@ class AmoniaBot(commands.Bot):
             is_esp_online = self.mqtt_handler.get_is_esp_online()
             relay_status, relay_mode = self.mqtt_handler.get_relay_status_data()
             suhu, kelembapan, amonia = self.mqtt_handler.get_sensor_data()
-            ratio = self.mqtt_handler.get_ratio()
+            voltage_mems = self.mqtt_handler.get_voltage_mems()
             if all(x is not None for x in [suhu, kelembapan, amonia]):
                 if is_esp_online:
                     save_to_csv(suhu, kelembapan, amonia)
-                    save_to_gcs(suhu, kelembapan, amonia, ratio, relay_status, relay_mode)
+                    save_to_gcs(suhu, kelembapan, amonia, voltage_mems, relay_status, relay_mode)
                     print(f"📊 Monitoring: Amonia={amonia}PPM, Suhu={suhu}°C, Kelembapan={kelembapan}%, Rasio={ratio}")
                 
                 if amonia > self.ammonia_threshold:
@@ -227,8 +227,10 @@ class CommandsCog(commands.Cog):
         """Menyalakan relay dalam mode timer"""
         try:
             if self.bot.current_mode != "MANUAL":
-                await ctx.send("⚠ Relay hanya dapat dihidupkan dalam **Mode Manual**.\nUbah mode dengan perintah !manual.")
+                await ctx.send("⚠ Relay hanya dapat dihidupkan dalam **Mode Manual**.\nUbah mode dengan perintah **!manual**.")
                 return
+            if self.timer_on_duration == 0:
+                await ctx.send(f"⚠ Durasi Timer {self.timer_on_duration}\nsilahkan setting timer terlebih dahulu\ndengan perintah **!set_timer**.")
             
             self.bot.mqtt_handler.client.publish(MQTT_RELAY_CONTROL_TOPIC, "TIMER")
             await ctx.send("✅ Timer berhasil aktif lewat perintah manual.")
@@ -314,11 +316,11 @@ class CommandsCog(commands.Cog):
                 return
 
             # Update nilai timer di bot
-            self.bot.manual_relay_on_duration = duration * 1000  # Simpan dalam milidetik
+            self.bot.timer_on_duration = duration * 1000  # Simpan dalam milidetik
 
             # Kirim setting timer ke ESP32
             data_json = json.dumps({
-                "command": "relay_on_manual",
+                "command": "timer_on",
                 "duration": duration * 1000,  # Konversi ke milidetik
                 "key": "running"
             })
@@ -327,7 +329,7 @@ class CommandsCog(commands.Cog):
             self.bot.mqtt_handler.client.publish(MQTT_RELAY_SETTING_TOPIC, data_json)
 
             await ctx.send(f"✅ Timer diatur: relay akan ON selama **{duration}** detik.\n"
-                        f"• Gunakan !timer_on untuk mengaktifkan relay dengan timer.")
+                        f"• Gunakan **!timer_on** untuk mengaktifkan relay dengan timer.")
 
         except Exception as e:
             print(f"Error dalam set_timer: {e}")  # Debug print

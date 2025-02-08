@@ -4,7 +4,7 @@ from google.cloud import storage
 import pytz
 import os
 
-def save_to_gcs(suhu, kelembapan, amonia, ratio, relay_status, relay_mode, bucket_name="all-data-sensor-bucket"):
+def save_to_gcs(suhu, kelembapan, amonia, voltage, relay_status, relay_mode, bucket_name="all-data-sensor-bucket"):
     try:
         # Setup waktu
         tz = pytz.timezone("Asia/Jakarta")
@@ -33,11 +33,11 @@ def save_to_gcs(suhu, kelembapan, amonia, ratio, relay_status, relay_mode, bucke
                 existing_data = list(reader)
         except:
             # Buat file baru
-            existing_data = [["timestamp", "suhu", "kelembapan", "amonia", "Rs/Ro" , "status relay", "mode relay"]]
+            existing_data = [["timestamp", "suhu", "kelembapan", "amonia", "voltage" , "status relay", "mode relay"]]
             print(f"✅ File baru: {filename}")
 
         # Tambah data baru
-        existing_data.append([timestamp, suhu, kelembapan, amonia, ratio, relay_status, relay_mode])
+        existing_data.append([timestamp, suhu, kelembapan, amonia, voltage, relay_status, relay_mode])
 
         # Simpan ke file lokal
         with open(local_file, 'w', newline='') as f:
