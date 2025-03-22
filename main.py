@@ -48,10 +48,10 @@ class AmoniaBot(commands.Bot):
             try:
                 # Atur nilai default di dalam bot
                 self.current_mode = "AUTO"
-                self.relay_on_duration = 30
-                self.relay_off_duration = 15
+                self.relay_on_duration = 5
+                self.relay_off_duration = 25200
                 self.timer_on_duration = 0
-                self.ammonia_threshold = 25
+                self.ammonia_threshold = 15
 
                 # Kirim pesan MQTT untuk mengatur mode auto ke ESP32
                 self.mqtt_handler.client.publish(MQTT_RELAY_CONTROL_TOPIC,  self.current_mode)
@@ -123,8 +123,8 @@ class AmoniaBot(commands.Bot):
                 if is_esp_online:
                     save_to_csv(suhu, kelembapan, amonia)
                     save_to_gcs(suhu, kelembapan, amonia, voltage_mems, relay_status, relay_mode)
-                    print(f"📊 Monitoring: Amonia={amonia}PPM, Suhu={suhu}°C, Kelembapan={kelembapan}%, Rasio={ratio}")
-                
+                    print(f"📊 Monitoring: Amonia={amonia}PPM, Suhu={suhu}°C, Kelembapan={kelembapan}%, voltage={voltage_mems}V")
+                    
                 if amonia > self.ammonia_threshold:
                     await self.send_notification(amonia, suhu, kelembapan)
             else:
@@ -229,8 +229,9 @@ class CommandsCog(commands.Cog):
             if self.bot.current_mode != "MANUAL":
                 await ctx.send("⚠ Relay hanya dapat dihidupkan dalam **Mode Manual**.\nUbah mode dengan perintah **!manual**.")
                 return
-            if self.timer_on_duration == 0:
-                await ctx.send(f"⚠ Durasi Timer {self.timer_on_duration}\nsilahkan setting timer terlebih dahulu\ndengan perintah **!set_timer**.")
+            if self.bot.timer_on_duration == 0:
+                await ctx.send(f"⚠ Durasi Timer {self.bot.timer_on_duration}\nsilahkan setting timer terlebih dahulu\ndengan perintah **!set_timer**.")
+                return
             
             self.bot.mqtt_handler.client.publish(MQTT_RELAY_CONTROL_TOPIC, "TIMER")
             await ctx.send("✅ Timer berhasil aktif lewat perintah manual.")
